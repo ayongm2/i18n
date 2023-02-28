@@ -10,6 +10,7 @@ local lang = {
     ["info_build_2"] = "Info: %i18n{build_name_%{[1]}} time:%time{%{[2]}|%Y-%m %H:%M}",
 }
 
+
 i18n.loadLanguages(lang, {})
 print(i18n("build_name_1"))
 print(i18n("info_build_1", {buildId = 1, time = os.time()}))
