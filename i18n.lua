@@ -75,7 +75,9 @@ function i18n.loadLanguages( languages, updateLanguages )
         LOCAL_LANGUAGE[1] = languages
     end
     -- 可根据项目需要调整成自动加载更新的多语言,甚至是多个多语言文件
-    if type(updateLanguages) == "string" then
+    if updateLanguages ~= nil then
+        LOCAL_LANGUAGE[2] = {}
+    elseif type(updateLanguages) == "string" then
         package.loaded[updateLanguages] = nil
         LOCAL_LANGUAGE[2] = require(updateLanguages)
     else
