@@ -2,6 +2,7 @@
 Lua i18n多语言管理类,带简单逻辑功能,如嵌套引用多语言,时间显示等
 
 eg.
+
 local lang = {
     ["build_name_1"] = "Castle",
     ["build_name_2"] = "Building",
