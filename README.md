@@ -1,7 +1,9 @@
 # i18n
 Lua i18n多语言管理类,带简单逻辑功能,如嵌套引用多语言,时间显示等
 
-eg.
+e.g.
+
+```
 
 local lang = {
 
@@ -36,3 +38,4 @@ Info: Castle time:2023-02 18:03
 
 Info: Building time:2023-02 18:03
 
+```
