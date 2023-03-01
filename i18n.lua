@@ -1,6 +1,6 @@
 --[[
-    多语言处理类
-    @author baochengfu
+    多语言
+    @author ayongm2
 --]]
 local i18n = {}
 
@@ -60,50 +60,40 @@ local convertSecondToString = function(second)
     return timeStr
 end
 
-local LOCAL_LANGUAGE = {{}, {}}
-local callbackNotFindedKeyProcess
+local LANGUAGES = {{}, {}}
+local notFindCallback
 --[[
     载入多语言信息
     @param  languages           string|table   多语言内容主体
-    @param  updateLanguages     string|table   更新用多语言内容
+    @param  updates             string|table   更新用多语言内容
 --]]
-function i18n.loadLanguages( languages, updateLanguages )
+function i18n.loadLanguages( languages, updates )
     if type(languages) == "string" then
         package.loaded[languages] = nil
-        LOCAL_LANGUAGE[1] = require(languages)
+        LANGUAGES[1] = require(languages)
     else
-        LOCAL_LANGUAGE[1] = languages
+        LANGUAGES[1] = languages
     end
     -- 可根据项目需要调整成自动加载更新的多语言,甚至是多个多语言文件
-    if updateLanguages ~= nil then
-        LOCAL_LANGUAGE[2] = {}
-    elseif type(updateLanguages) == "string" then
-        package.loaded[updateLanguages] = nil
-        LOCAL_LANGUAGE[2] = require(updateLanguages)
+    if updates ~= nil then
+        LANGUAGES[2] = {}
+    elseif type(updates) == "string" then
+        package.loaded[updates] = nil
+        LANGUAGES[2] = require(updates)
     else
-        LOCAL_LANGUAGE[2] = updateLanguages
+        LANGUAGES[2] = updates
     end
 end
--- 设置找不到key时的追加方案,可以在具体项目中增加自动适应的能力,修改成另一个key后再查找
-function i18n.setNotFindedKeyProcess( callback )
-    callbackNotFindedKeyProcess = callback
+-- 找不到key时的替换方案
+function i18n.setNotFindCallback( callback )
+    notFindCallback = callback
 end
 local function translate( key, values )
-    return LOCAL_LANGUAGE[2][key] or LOCAL_LANGUAGE[1][key] 
-        or (DEBUG == 2 and LOCAL_LANGUAGE[3] and LOCAL_LANGUAGE[3][key])
+    return LANGUAGES[2][key] or LANGUAGES[1][key] 
+        or (DEBUG == 2 and LANGUAGES[3] and LANGUAGES[3][key])
 end
--- 扩展的替换规则和替换函数
+-- 扩展功能
 local EXPAND_FUNCTIONS = {
-    -- {   -- 运算
-    --     "%%calc%|.-{.-}", 
-    --     function ( translateKey )
-    --         local valueStart = string_find(translateKey, "%|") + 1
-    --         local valueEnd = string_find(translateKey, "{") - 1
-    --         local value = (string_sub(translateKey, valueStart, valueEnd))
-    --         local key = string_sub(translateKey, string_find(translateKey, "{") + 1, -2)
-    --         return util.lambda(value)(key)
-    --     end
-    -- },
     {  -- 时间格式 %time{xxxx|x}
         "%%time{.-}",
         function ( translateKey )
@@ -115,7 +105,6 @@ local EXPAND_FUNCTIONS = {
                 return convertSecondToString(time)
             else
                 -- TODO:正常时间 请自行实现转换
-                -- return formatTimeString(format, time)
                 return os.date(format or "%d/%m/%Y %H:%M:%S", time)
             end
         end
@@ -125,17 +114,17 @@ local EXPAND_FUNCTIONS = {
     多语言转换
     @param  key         string  多语言key
     @param  values      table  多语言设置用的值
-    @param  forceTemplate   bool    强制使用模板,即key就是模板
+    @param  useTemplate bool    key为模板
 --]]
-function i18n.translate( key, values, forceTemplate ) 
+function i18n.translate( key, values, useTemplate ) 
     if key == "" or key == nil then return key end
     local result
-    if forceTemplate then
+    if useTemplate then
         result = key
     else
         result = translate( key, values )
-        if not result and callbackNotFindedKeyProcess then
-            result = translate(callbackNotFindedKeyProcess(key), values)
+        if not result and notFindCallback then
+            result = translate(notFindCallback(key), values)
         end
     end
     if result then 
@@ -157,8 +146,8 @@ function i18n.translate( key, values, forceTemplate )
                 local key = string_sub(translateKey, 7, -2)
                 if i18n.hasKey(key) then
                     return i18n.translate(key, values)
-                elseif callbackNotFindedKeyProcess then
-                    key = callbackNotFindedKeyProcess(key)
+                elseif notFindCallback then
+                    key = notFindCallback(key)
                     if i18n.hasKey(key) then
                         return i18n.translate(key, values)
                     end
@@ -183,7 +172,7 @@ end
 --]]
 function i18n.hasKey(key, checkParams)
     if key ~= nil and key ~= "" then
-        local content = LOCAL_LANGUAGE[2][key] or LOCAL_LANGUAGE[1][key]
+        local content = LANGUAGES[2][key] or LANGUAGES[1][key]
         local hasKey = content ~= nil
         local hasParams
         if hasKey and checkParams then
@@ -193,10 +182,10 @@ function i18n.hasKey(key, checkParams)
     end
     return false
 end
--- 弄个i18n.translate的快捷调用
+
 setmetatable(i18n, {
-	__call = function ( _, key, values, forceTemplate )
-		return i18n.translate(key, values, forceTemplate)
+	__call = function ( _, key, values, useTemplate )
+		return i18n.translate(key, values, useTemplate)
 	end
 	})
 
@@ -204,6 +193,19 @@ setmetatable(i18n, {
 print(i18n("%time{%{time}}", {time = 850}, true))
 print(i18n("%time{%{[1]}|%Y-%m %H:%M}", {os.time()}, true))
 print(i18n("%time{%{time}}", {time = os.time()}, true))
+
+
+local lang = {
+    ["build_name_1"] = "Castle",
+    ["build_name_2"] = "Building",
+    ["info_build_1"] = "Info: %i18n{build_name_%{buildId}} time:%time{%{time}|%Y-%m %H:%M}",
+    ["info_build_2"] = "Info: %i18n{build_name_%{[1]}} time:%time{%{[2]}|%Y-%m %H:%M}",
+}
+
+i18n.loadLanguages(lang, {})
+print(i18n("build_name_1"))
+print(i18n("info_build_1", {buildId = 1, time = os.time()}))
+print(i18n("info_build_2", {2, os.time()}))
 --]]
 
 return i18n
